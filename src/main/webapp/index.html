@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Interfaz básica de Telecomandas</title>
+</head>
+<body>
+	<h1>Interfaz básica de Telecomandas</h1>
+	
+	<div id="divPlatos"></div>
+	<table id="tablePlatos">
+		<thead>
+			<tr>
+				<th>Nombre</th>
+				<th>Mesa</th>
+			</tr>
+		</thead>
+	</table>
+	<div id="divErrores"></div>
+</body>
+<script>
+	
+	var websocket = new WebSocket("ws://localhost:8080/Comandas/ServidorWS");
+	var mesaActual=null;
+	
+	websocket.onopen = function(evt) { 
+	       onOpen(evt)
+	};
+	   
+	websocket.onmessage = function(evt) {
+		onMessage(evt)
+	};
+	websocket.onerror = function(evt) {
+		onError(evt)
+	};
+	
+	function onOpen(){
+		console.log("Conectado");
+	}
+	function onError(){
+		console.log("Error");
+	}
+	function onMessage(evt) {
+	    var data = JSON.parse(evt.data);
+	    if(data.type == "cerrar")
+	    	cerrar(data);
+	    if(data.type == "platos")
+	    	platos(data);
+	}
+	
+	function platos(data){
+		var idComanda = data.idComanda;
+	    var idMesa = data.idMesa;
+	    var platosArray = data.platos;
+	    var platos = [];
+	    for(var i = 0; i<platosArray.length; i++){
+	        platos.push(new Plato(platosArray[i]._id, platosArray[i].nombre, platosArray[i].unidades, platosArray[i].preparado, idComanda, idMesa));
+	    }
+	    addPlatos(platos);
+	}
+	
+	function addPlatos(platos){
+		for(var i=0;i<platos.length;i++){
+			var plato = platos[i];
+			var tr = document.createElement("tr"); tablePlatos.appendChild(tr);
+			tr.setAttribute("id", plato.idComanda);
+			var tdNombre = document.createElement("td");
+			var tdMesa = document.createElement("td");
+			var tdBoton = document.createElement("td");
+			tr.appendChild(tdNombre); tr.appendChild(tdMesa); tr.appendChild(tdBoton);
+			var labelNombre = document.createElement("label"); tdNombre.appendChild(labelNombre);
+			labelNombre.innerHTML = plato.nombre;
+			var labelMesa = document.createElement("label"); tdMesa.appendChild(labelMesa);
+			labelMesa.innerHTML = plato.idMesa;
+			var btnPreparado = document.createElement("button"); tdBoton.appendChild(btnPreparado); tdBoton.appendChild(document.createElement("br"));
+			btnPreparado.innerHTML = "Hecho";
+			btnPreparado.setAttribute("id", plato.id + "" + plato.idComanda);
+			btnPreparado.setAttribute("onclick", "preparado('"+ plato.idComanda + "', " + plato.idMesa + ", '"+ plato.id +"', '"+ plato.nombre +"', "+ plato.unidades +")");
+		}
+	}
+	
+	function preparado(idComanda, idMesa, id, nombre, unidades){
+		var plato = new Plato(id, nombre, unidades, true, idComanda, idMesa);
+		document.getElementById(id+""+idComanda).disabled=true;
+		
+		websocket.send(JSON.stringify(plato));
+	}	
+	
+	function cerrar(data){
+		var trs = document.getElementsByTagName("tr");
+		for(var i = 0; i<trs.length;i++){
+			var element = trs[i];
+			if(element.id == data.idComanda){
+				element.parentNode.removeChild(element);
+				i--;
+			}
+		}
+	}
+	
+	function Plato(id, nombre, unidades, preparado, idComanda, idMesa){
+		  this.id = id;
+		  this.idComanda = idComanda;
+		  this.idMesa = idMesa;
+		  this.nombre = nombre;
+		  this.unidades = unidades;
+		  this.preparado = preparado;
+		}	
+	
+	
+</script>
+</html>
